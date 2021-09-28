@@ -1,8 +1,59 @@
 package semver
 
 import (
+	"reflect"
 	"testing"
 )
+
+func TestParseConstraint(t *testing.T) {
+	tests := []struct {
+		in  string
+		f   cfunc
+		v   string
+		err bool
+	}{
+		{">= 1.2", constraintGreaterThanEqual, "1.2", false},
+		{"1.0", constraintTildeOrEqual, "1.0", false},
+		{"foo", nil, "", true},
+		{"<= 1.2", constraintLessThanEqual, "1.2", false},
+		{"=< 1.2", constraintLessThanEqual, "1.2", false},
+		{"=> 1.2", constraintGreaterThanEqual, "1.2", false},
+		{"v1.2", constraintTildeOrEqual, "1.2", false},
+		{"=1.5", constraintTildeOrEqual, "1.5", false},
+		{"> 1.3", constraintGreaterThan, "1.3", false},
+		{"< 1.4.1", constraintLessThan, "1.4.1", false},
+		{"< 40.50.10", constraintLessThan, "40.50.10", false},
+		{"0", constraintTildeOrEqual, "0", false},
+		{"*", constraintTildeOrEqual, "0", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.in, func(t *testing.T) {
+			c, err := parseConstraint(tc.in)
+			if tc.err && err == nil {
+				t.Fatalf("Expected error for %s didn't occur", tc.in)
+			} else if !tc.err && err != nil {
+				t.Fatalf("Unexpected error for %s: %s", tc.in, err)
+			}
+
+			// If an error was expected continue the loop and don't try the other
+			// tests as they will cause errors.
+			if tc.err {
+				return
+			}
+
+			if tc.v != c.con.String() {
+				t.Errorf("Incorrect version found on %s", tc.in)
+			}
+
+			f1 := reflect.ValueOf(tc.f)
+			f2 := reflect.ValueOf(constraintOps[c.origfunc])
+			if f1 != f2 {
+				t.Errorf("Wrong constraint found for %s", tc.in)
+			}
+		})
+	}
+}
 
 func TestConstraintNotEqual(t *testing.T) {
 	cases := []struct {

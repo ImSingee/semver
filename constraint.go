@@ -221,11 +221,17 @@ func parseConstraint(c string) (*constraint, error) {
 				break
 			}
 		}
-		if dirtyPart > 0 { // something dirty
+
+		if dirtyPart > 0 {
 			if dirtyPart != len(verParts) { // dirty part must also be last part
 				return nil, fmt.Errorf("improper constraint: %s", c)
 			}
-			verWithoutTrailing = verWithoutTrailing[:len(verWithoutTrailing)-2] // trim .x
+
+			if dirtyPart == 1 {
+				verWithoutTrailing = "0" // remove first x
+			} else {
+				verWithoutTrailing = verWithoutTrailing[:len(verWithoutTrailing)-2] // trim .x
+			}
 		}
 
 		con, err := NewVersion(verWithoutTrailing + preAndMeta)

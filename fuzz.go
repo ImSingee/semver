@@ -12,7 +12,7 @@ func Fuzz(data []byte) int {
 	_, _ = StrictNewVersion(d)
 
 	// Test NewConstraint
-	//_, _ = NewConstraint(d)
+	_, _ = NewConstraint(d)
 
 	// The return value should be 0 normally, 1 if the priority in future tests
 	// should be increased, and -1 if future tests should skip passing in that
