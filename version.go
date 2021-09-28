@@ -5,7 +5,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -32,15 +31,6 @@ var (
 	// ErrInvalidPrerelease is returned when the pre-release is an invalid format
 	ErrInvalidPrerelease = errors.New("invalid Prerelease string")
 )
-
-// semVerRegex is the regular expression used to parse a semantic version.
-const semVerRegex string = `v?([0-9]+)(\.[0-9]+)*` +
-	`(-([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?` +
-	`(\+([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?`
-
-// The compiled version of the regex created at init() is cached here so it
-// only needs to be created once.
-var versionRegex = regexp.MustCompile("^" + semVerRegex + "$")
 
 // Version represents a single semantic version.
 type Version struct {
@@ -357,6 +347,18 @@ func (v *Version) Equal(o *Version) bool {
 	return v.Compare(o) == 0
 }
 
+func maxPartsNumberOf(v1, v2 *Version) int {
+	n1 := v1.PartsNumber()
+	n2 := v2.PartsNumber()
+
+	n := n1
+	if n2 > n1 {
+		n = n2
+	}
+
+	return n
+}
+
 // Compare compares this version to another one. It returns -1, 0, or 1 if
 // the version smaller, equal, or larger than the other version.
 //
@@ -365,13 +367,7 @@ func (v *Version) Equal(o *Version) bool {
 // prereleases. If you want to work with ranges using typical range syntaxes that
 // skip prereleases if the range is not looking for them use constraints.
 func (v *Version) Compare(o *Version) int {
-	n1 := v.PartsNumber()
-	n2 := o.PartsNumber()
-
-	n := n1
-	if n2 > n1 {
-		n = n2
-	}
+	n := maxPartsNumberOf(v, o)
 
 	// Compare parts from left to right
 	//  If a difference is found return the comparison.
