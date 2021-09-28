@@ -7,95 +7,79 @@ import (
 	"testing"
 )
 
+var strictVersionPass = []string{
+	"1.2.3",
+	"1.2.3+test.01",
+	"1.2.3-alpha.-1",
+	"1.0",
+	"1",
+	"1.2-5",
+	"1.2-beta.5",
+	"1.2.0-x.Y.0+metadata",
+	"1.2.0-x.Y.0+metadata-width-hypen",
+	"1.2.3-rc1-with-hypen",
+	"1.2.3.4",
+	"1.2.2147483648",
+	"1.2147483648.3",
+	"2147483648.3.0",
+}
+
+var softVersionFail = []string{
+	"1.2.3-alpha.01",
+	"1.2.beta",
+	"v1.2.beta",
+	"foo",
+	"\n1.2",
+	"\nv1.2",
+	".",
+	"1.",
+	".1",
+}
+
 func TestStrictNewVersion(t *testing.T) {
-	tests := []struct {
-		version string
-		err     bool
-	}{
-		{"1.2.3", false},
-		{"1.2.3-alpha.01", true},
-		{"1.2.3+test.01", false},
-		{"1.2.3-alpha.-1", false},
-		{"v1.2.3", true},
-		{"1.0", true},
-		{"v1.0", true},
-		{"1", true},
-		{"v1", true},
-		{"1.2.beta", true},
-		{"v1.2.beta", true},
-		{"foo", true},
-		{"1.2-5", true},
-		{"v1.2-5", true},
-		{"1.2-beta.5", true},
-		{"v1.2-beta.5", true},
-		{"\n1.2", true},
-		{"\nv1.2", true},
-		{"1.2.0-x.Y.0+metadata", false},
-		{"v1.2.0-x.Y.0+metadata", true},
-		{"1.2.0-x.Y.0+metadata-width-hypen", false},
-		{"v1.2.0-x.Y.0+metadata-width-hypen", true},
-		{"1.2.3-rc1-with-hypen", false},
-		{"v1.2.3-rc1-with-hypen", true},
-		{"1.2.3.4", true},
-		{"v1.2.3.4", true},
-		{"1.2.2147483648", false},
-		{"1.2147483648.3", false},
-		{"2147483648.3.0", false},
+	for _, v := range strictVersionPass {
+		t.Run(v, func(t *testing.T) {
+			_, err := StrictNewVersion(v)
+			if err != nil {
+				t.Fatalf("Error: %s", err)
+			}
+		})
 	}
 
-	for _, tc := range tests {
-		_, err := StrictNewVersion(tc.version)
-		if tc.err && err == nil {
-			t.Fatalf("expected error for version: %s", tc.version)
-		} else if !tc.err && err != nil {
-			t.Fatalf("error for version %s: %s", tc.version, err)
-		}
+	for _, v := range softVersionFail {
+		t.Run(v, func(t *testing.T) {
+			_, err := StrictNewVersion(v)
+			if err == nil {
+				t.Fatal("Expect Error")
+			}
+		})
 	}
 }
 
 func TestNewVersion(t *testing.T) {
-	tests := []struct {
-		version string
-		err     bool
-	}{
-		{"1.2.3", false},
-		{"1.2.3-alpha.01", true},
-		{"1.2.3+test.01", false},
-		{"1.2.3-alpha.-1", false},
-		{"v1.2.3", false},
-		{"1.0", false},
-		{"v1.0", false},
-		{"1", false},
-		{"v1", false},
-		{"1.2.beta", true},
-		{"v1.2.beta", true},
-		{"foo", true},
-		{"1.2-5", false},
-		{"v1.2-5", false},
-		{"1.2-beta.5", false},
-		{"v1.2-beta.5", false},
-		{"\n1.2", true},
-		{"\nv1.2", true},
-		{"1.2.0-x.Y.0+metadata", false},
-		{"v1.2.0-x.Y.0+metadata", false},
-		{"1.2.0-x.Y.0+metadata-width-hypen", false},
-		{"v1.2.0-x.Y.0+metadata-width-hypen", false},
-		{"1.2.3-rc1-with-hypen", false},
-		{"v1.2.3-rc1-with-hypen", false},
-		{"1.2.3.4", true},
-		{"v1.2.3.4", true},
-		{"1.2.2147483648", false},
-		{"1.2147483648.3", false},
-		{"2147483648.3.0", false},
+	for _, v := range strictVersionPass {
+		t.Run(v, func(t *testing.T) {
+			_, err := NewVersion(v)
+			if err != nil {
+				t.Fatalf("Error: %s", err)
+			}
+		})
+
+		t.Run("v"+v, func(t *testing.T) {
+			_, err := NewVersion("v" + v)
+			if err != nil {
+				t.Fatalf("Error: %s", err)
+			}
+		})
 	}
 
-	for _, tc := range tests {
-		_, err := NewVersion(tc.version)
-		if tc.err && err == nil {
-			t.Fatalf("expected error for version: %s", tc.version)
-		} else if !tc.err && err != nil {
-			t.Fatalf("error for version %s: %s", tc.version, err)
-		}
+	for _, v := range softVersionFail {
+		t.Run(v, func(t *testing.T) {
+			_, err := NewVersion(v)
+			if err == nil {
+				t.Fatal("Expect Error")
+			}
+		})
 	}
 }
 
@@ -138,14 +122,20 @@ func TestParts(t *testing.T) {
 		t.Error("Error parsing version 1.2.3-beta.1+build.123")
 	}
 
-	if v.Major() != 1 {
-		t.Error("Major() returning wrong value")
+	if v.PartsNumber() != 3 {
+		t.Error("PartsNumber() returning wrong value")
 	}
-	if v.Minor() != 2 {
-		t.Error("Minor() returning wrong value")
+	if v.Major() != 1 || v.Part(1) != 1 {
+		t.Error("Major() | Part(1) returning wrong value")
 	}
-	if v.Patch() != 3 {
-		t.Error("Patch() returning wrong value")
+	if v.Minor() != 2 || v.Part(2) != 2 {
+		t.Error("Minor() | Part(2) returning wrong value")
+	}
+	if v.Patch() != 3 || v.Part(3) != 3 {
+		t.Error("Patch() | Part(3) returning wrong value")
+	}
+	if v.Part(4) != 0 {
+		t.Error("Part(4) returning wrong value")
 	}
 	if v.Prerelease() != "beta.1" {
 		t.Error("Prerelease() returning wrong value")
@@ -162,14 +152,14 @@ func TestCoerceString(t *testing.T) {
 	}{
 		{"1.2.3", "1.2.3"},
 		{"v1.2.3", "1.2.3"},
-		{"1.0", "1.0.0"},
-		{"v1.0", "1.0.0"},
-		{"1", "1.0.0"},
-		{"v1", "1.0.0"},
-		{"1.2-5", "1.2.0-5"},
-		{"v1.2-5", "1.2.0-5"},
-		{"1.2-beta.5", "1.2.0-beta.5"},
-		{"v1.2-beta.5", "1.2.0-beta.5"},
+		{"1.0", "1.0"},
+		{"v1.0", "1.0"},
+		{"1", "1"},
+		{"v1", "1"},
+		{"1.2-5", "1.2-5"},
+		{"v1.2-5", "1.2-5"},
+		{"1.2-beta.5", "1.2-beta.5"},
+		{"v1.2-beta.5", "1.2-beta.5"},
 		{"1.2.0-x.Y.0+metadata", "1.2.0-x.Y.0+metadata"},
 		{"v1.2.0-x.Y.0+metadata", "1.2.0-x.Y.0+metadata"},
 		{"1.2.0-x.Y.0+metadata-width-hypen", "1.2.0-x.Y.0+metadata-width-hypen"},
@@ -368,37 +358,39 @@ func TestInc(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		v1, err := NewVersion(tc.v1)
-		if err != nil {
-			t.Errorf("Error parsing version: %s", err)
-		}
-		var v2 Version
-		switch tc.how {
-		case "patch":
-			v2 = v1.IncPatch()
-		case "minor":
-			v2 = v1.IncMinor()
-		case "major":
-			v2 = v1.IncMajor()
-		}
+		t.Run(tc.v1+"-increase-"+tc.how, func(t *testing.T) {
+			v1, err := NewVersion(tc.v1)
+			if err != nil {
+				t.Errorf("Error parsing version: %s", err)
+			}
+			var v2 Version
+			switch tc.how {
+			case "patch":
+				v2 = v1.IncPatch()
+			case "minor":
+				v2 = v1.IncMinor()
+			case "major":
+				v2 = v1.IncMajor()
+			}
 
-		a := v2.String()
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Inc %q failed. Expected %q got %q",
-				tc.how, e, a,
-			)
-		}
+			a := v2.String()
+			e := tc.expected
+			if a != e {
+				t.Errorf(
+					"Inc %q failed. Expected %q got %q",
+					tc.how, e, a,
+				)
+			}
 
-		a = v2.Original()
-		e = tc.expectedOriginal
-		if a != e {
-			t.Errorf(
-				"Inc %q failed. Expected original %q got %q",
-				tc.how, e, a,
-			)
-		}
+			a = v2.Original()
+			e = tc.expectedOriginal
+			if a != e {
+				t.Errorf(
+					"Inc %q failed. Expected original %q got %q",
+					tc.how, e, a,
+				)
+			}
+		})
 	}
 }
 
