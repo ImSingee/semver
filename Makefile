@@ -18,6 +18,10 @@ test-cover:
 	@echo "==> Running Tests with coverage"
 	GO111MODULE=on go test -cover .
 
+.PHONY: bench
+bench:
+	@go test -bench . | tee BENCHMARK
+
 .PHONY: fuzz
 fuzz: $(GOFUZZBUILD) $(GOFUZZ)
 	@echo "==> Fuzz testing"

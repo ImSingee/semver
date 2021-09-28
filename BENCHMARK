@@ -1,0 +1,13 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/ImSingee/semver
+BenchmarkNewVersionSimple-8           	 9277636	       128.0 ns/op	     152 B/op	       3 allocs/op
+BenchmarkCoerceNewVersionSimple-8     	 9802950	       124.4 ns/op	     152 B/op	       3 allocs/op
+BenchmarkNewVersionPre-8              	 5264308	       229.5 ns/op	     168 B/op	       4 allocs/op
+BenchmarkStrictNewVersionPre-8        	 5249704	       224.8 ns/op	     168 B/op	       4 allocs/op
+BenchmarkNewVersionMeta-8             	 5139495	       231.7 ns/op	     168 B/op	       4 allocs/op
+BenchmarkStrictNewVersionMeta-8       	 5299618	       226.8 ns/op	     168 B/op	       4 allocs/op
+BenchmarkNewVersionMetaDash-8         	 3256507	       367.2 ns/op	     216 B/op	       5 allocs/op
+BenchmarkStrictNewVersionMetaDash-8   	 3296224	       364.8 ns/op	     216 B/op	       5 allocs/op
+PASS
+ok  	github.com/ImSingee/semver	13.087s

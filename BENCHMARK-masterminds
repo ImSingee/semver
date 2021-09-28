@@ -1,0 +1,37 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/Masterminds/semver/v3
+BenchmarkNewConstraintUnary-8            	  459109	      2587 ns/op	    1300 B/op	      15 allocs/op
+BenchmarkNewConstraintTilde-8            	  281985	      4302 ns/op	    1260 B/op	      12 allocs/op
+BenchmarkNewConstraintCaret-8            	  280656	      4456 ns/op	    1262 B/op	      12 allocs/op
+BenchmarkNewConstraintWildcard-8         	  451290	      2691 ns/op	    1284 B/op	      14 allocs/op
+BenchmarkNewConstraintRange-8            	  131236	      8901 ns/op	    2338 B/op	      22 allocs/op
+BenchmarkNewConstraintUnion-8            	  128500	      9311 ns/op	    2497 B/op	      21 allocs/op
+BenchmarkCheckVersionUnary-8             	18936043	        61.38 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCheckVersionTilde-8             	21278497	        57.95 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCheckVersionCaret-8             	27474334	        43.92 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCheckVersionWildcard-8          	24089995	        50.09 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCheckVersionRange-8             	21092055	        56.08 ns/op	       0 B/op	       0 allocs/op
+BenchmarkCheckVersionUnion-8             	 2494156	       487.6 ns/op	     197 B/op	       6 allocs/op
+BenchmarkValidateVersionUnary-8          	18960128	        63.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateVersionUnaryFail-8      	19863835	        60.32 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateVersionTilde-8          	20733579	        57.68 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateVersionTildeFail-8      	 2678085	       446.8 ns/op	     189 B/op	       7 allocs/op
+BenchmarkValidateVersionCaret-8          	26713117	        44.81 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateVersionCaretFail-8      	 2487480	       469.1 ns/op	     213 B/op	       7 allocs/op
+BenchmarkValidateVersionWildcard-8       	23218240	        51.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateVersionWildcardFail-8   	 2531878	       475.4 ns/op	     213 B/op	       7 allocs/op
+BenchmarkValidateVersionRange-8          	20790906	        57.00 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateVersionRangeFail-8      	 2539838	       473.0 ns/op	     189 B/op	       7 allocs/op
+BenchmarkValidateVersionUnion-8          	 2353345	       510.4 ns/op	     213 B/op	       7 allocs/op
+BenchmarkValidateVersionUnionFail-8      	 1279432	       937.1 ns/op	     426 B/op	      14 allocs/op
+BenchmarkNewVersionSimple-8              	 2913435	       410.2 ns/op	     401 B/op	       3 allocs/op
+BenchmarkCoerceNewVersionSimple-8        	 8321029	       143.7 ns/op	     128 B/op	       2 allocs/op
+BenchmarkNewVersionPre-8                 	 1882194	       639.2 ns/op	     418 B/op	       4 allocs/op
+BenchmarkStrictNewVersionPre-8           	 4039243	       293.6 ns/op	     208 B/op	       5 allocs/op
+BenchmarkNewVersionMeta-8                	 1747584	       688.2 ns/op	     418 B/op	       4 allocs/op
+BenchmarkStrictNewVersionMeta-8          	 3973156	       302.1 ns/op	     208 B/op	       5 allocs/op
+BenchmarkNewVersionMetaDash-8            	 1000000	      1039 ns/op	     466 B/op	       5 allocs/op
+BenchmarkStrictNewVersionMetaDash-8      	 2787102	       427.6 ns/op	     256 B/op	       6 allocs/op
+PASS
+ok  	github.com/Masterminds/semver/v3	47.301s
