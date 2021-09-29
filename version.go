@@ -199,9 +199,9 @@ func (v *Version) PartsNumber() int {
 func (v *Version) Part(part int) uint64 {
 	if len(v.parts) >= part {
 		return v.parts[part-1]
-	} else {
-		return 0
 	}
+
+	return 0
 }
 
 // Major returns the major version.
