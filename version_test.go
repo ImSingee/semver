@@ -192,10 +192,18 @@ func TestCompare(t *testing.T) {
 		{"2.2.3", "2.2.2", 1},
 		{"3.2-beta", "3.2-beta", 0},
 		{"1.3", "1.1.4", 1},
-		{"4.2", "4.2-beta", 1},
+		{"4.2", "4.2-beta", 1}, // 4.2 > 4.2-beta
 		{"4.2-beta", "4.2", -1},
-		{"4.2-alpha", "4.2-beta", -1},
+		{"4.2-alpha", "4.2-beta", -1}, // 4.2-alpha < 4.2-beta
 		{"4.2-alpha", "4.2-alpha", 0},
+		{"4.2-alpha", "4.2-alpha.1", -1},    // 4.2-alpha < 4.2-alpha.1
+		{"4.2-alpha.1", "4.2-alpha.2", -1},  // 4.2-alpha.1 < 4.2-alpha.2
+		{"4.2-alpha.2", "4.2-alpha.9", -1},  // 4.2-alpha.2 < 4.2-alpha.9
+		{"4.2-alpha.9", "4.2-alpha.10", -1}, // 4.2-alpha.9 < 4.2-alpha.10
+		{"4.2-alpha.1", "4.2-alpha.10", -1}, // 4.2-alpha.1 < 4.2-alpha.10
+		{"4.2-alpha.2", "4.2-alpha.11", -1}, // 4.2-alpha.2 < 4.2-alpha.11
+		{"4.2-alpha.999", "4.2-beta", -1},   // 4.2-alpha.999 < 4.2-beta
+		{"4.2-alpha.999", "4.2-beta.1", -1}, // 4.2-alpha.999 < 4.2-beta.1
 		{"4.2-beta.2", "4.2-beta.1", 1},
 		{"4.2-beta2", "4.2-beta1", 1},
 		{"4.2-beta", "4.2-beta.2", -1},
