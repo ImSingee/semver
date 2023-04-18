@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/ImSingee/tt"
 	"testing"
 )
 
@@ -81,6 +82,22 @@ func TestNewVersion(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewVersionByParts(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		v := NewVersionByParts()
+		tt.AssertIsNotNil(t, v)
+		tt.AssertEqual(t, 0, len(v.parts))
+		tt.AssertEqual(t, "", v.original)
+	})
+
+	t.Run("standard", func(t *testing.T) {
+		v := NewVersionByParts(1, 2, 13)
+		tt.AssertIsNotNil(t, v)
+		tt.AssertEqual(t, []uint64{1, 2, 13}, v.parts)
+		tt.AssertEqual(t, "1.2.13", v.original)
+	})
 }
 
 func TestOriginal(t *testing.T) {

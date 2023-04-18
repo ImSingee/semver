@@ -131,6 +131,24 @@ func NewVersion(v string) (sv *Version, err error) {
 	return
 }
 
+func NewVersionByParts(nums ...uint64) *Version {
+	return &Version{
+		parts:    nums,
+		original: joinNumbers(nums),
+	}
+}
+
+func joinNumbers(nums []uint64) string {
+	b := strings.Builder{}
+	for i, n := range nums {
+		if i > 0 {
+			b.WriteRune('.')
+		}
+		b.WriteString(strconv.FormatUint(n, 10))
+	}
+	return b.String()
+}
+
 // MustParse parses a given version and panics on error.
 func MustParse(v string) *Version {
 	sv, err := NewVersion(v)
