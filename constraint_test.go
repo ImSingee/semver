@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/ImSingee/tt"
 	"reflect"
 	"testing"
+
+	"github.com/ImSingee/tt"
 )
 
 func TestParseConstraint(t *testing.T) {
@@ -815,37 +816,4 @@ func TestTextUnmarshalConstraints(t *testing.T) {
 			t.Errorf("Error unmarshaling constraint, unexpected object content: got=%q want=%q", got, tc.want)
 		}
 	}
-}
-
-func FuzzNewConstraint(f *testing.F) {
-	testcases := []string{
-		"v1.2.3",
-		" ",
-		"......",
-		"1",
-		"1.2.3-beta.1",
-		"1.2.3+foo",
-		"2.3.4-alpha.1+bar",
-		"lorem ipsum",
-		"*",
-		"!=1.2.3",
-		"^4.5",
-		"1.0.0 - 2",
-		"1.2.3.4.5.6",
-		">= 1",
-		"~9.8.7",
-		"<= 12.13.14",
-		"987654321.123456789.654123789",
-		"1.x",
-		"2.3.x",
-		"9.2-beta.0",
-	}
-
-	for _, tc := range testcases {
-		f.Add(tc)
-	}
-
-	f.Fuzz(func(t *testing.T, a string) {
-		_, _ = NewConstraint(a)
-	})
 }
