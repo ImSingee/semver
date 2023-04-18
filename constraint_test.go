@@ -401,6 +401,42 @@ func TestConstraintsCheck(t *testing.T) {
 		// Ranges should work in conjunction with other constraints anded together.
 		{"1.0.0 - 2.0.0 <=2.0.0", "1.5.0", true},
 		{"1.0.0 - 2.0.0, <=2.0.0", "1.5.0", true},
+
+		// Should work for more than 3 version parts
+		{"1.2.3.4 - 1.2.3.8", "1.2.3.4", true}, // range
+		{"1.2.3.4 - 1.2.3.8", "1.2.3.5", true},
+		{"1.2.3.4 - 1.2.3.8", "1.2.3.8", true},
+		{"1.2.3.4 - 1.2.3.8", "1.2.3.3", false},
+		{"1.2.3.4 - 1.2.3.8", "1.2.3.9", false},
+		{"*", "1.2.3.8", true},
+		{"1.2.x", "1.2.0", true},
+		{"1.2.x", "1.2", true},
+		{"1.2.x", "1.2.110", true},
+		{"1.2.x", "1.1.1", false},
+		{"~1.2.3.4", "1.2.3.8", true}, // >= 1.2.3.4, < 1.2.4
+		{"~1.2.3.4", "1.2.3.3", false},
+		{"~1.2.3.4", "1.2.4", false},
+		{"~1.2.3", "1.2.4", true}, // >= 1.2.3, < 1.3
+		{"~1.2.3", "1.2.4.3", true},
+		{"~1.2.3", "1.2.2", false},
+		{"~1.2.3", "1.3", false},
+		{"~1.2", "1.2", true}, // >= 1.2, < 1.3
+		{"~1.2", "1.2.3", true},
+		{"~1.2", "1.3", false},
+		{"~1", "1.3", true}, // >= 1.2, < 1.3
+		{"~1", "2", false},
+		{"=1.1", "1.1.0", true}, // equal
+		{"=1.1.0", "1.1", true},
+		{"=1.1.0-test", "1.1-test", true}, // equal with prerelease
+		{"=1.1.0-test", "1.1", false},
+		{"!=1.1.0-test", "1.1", true},
+		{"!=1.1.0-test", "1.1-test", false},
+		{"=1.1.0+test", "1.1.0+test", true}, // equal with metadata
+		{"=1.1.0", "1.1.0+test", true},
+		{"=1.1.0+test", "1.1.0", false},
+		{"!=1.1.0+test", "1.1.0+test", false},
+		{"!=1.1.0", "1.1.0+test", false},
+		{"!=1.1.0+test", "1.1.0", true},
 	}
 
 	for _, tc := range tests {

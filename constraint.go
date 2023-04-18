@@ -341,7 +341,7 @@ func constraintNotEqual(v *Version, c *constraint) (bool, error) {
 		return false, fmt.Errorf("%s is equal to %s", v, c.orig)
 	}
 
-	eq := v.Equal(c.con)
+	eq := v.equalAndCheckMetadata(c.con)
 	if eq {
 		return false, fmt.Errorf("%s is equal to %s", v, c.orig)
 	}
@@ -479,8 +479,21 @@ func constraintTilde(v *Version, c *constraint) (bool, error) {
 	return true, nil
 }
 
+// !equal => return false
+// another contains build && v.metadata != another.metadata => return false
+// else => return true
+func (v *Version) equalAndCheckMetadata(another *Version) bool {
+	if !v.Equal(another) {
+		return false
+	}
+	if cm, sm := another.metadata, v.metadata; cm != "" && cm != sm {
+		return false
+	}
+	return true
+}
+
 func constraintEqual(v *Version, c *constraint) (bool, error) {
-	eq := v.Equal(c.con)
+	eq := v.equalAndCheckMetadata(c.con)
 	if eq {
 		return true, nil
 	}
