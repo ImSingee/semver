@@ -278,7 +278,7 @@ func (v *Version) IncPart(part int) Version {
 	vNext := v.Copy()
 	vNext.ensurePartsNumber(part)
 
-	if len(vNext.parts) == part { // last part
+	if len(vNext.parts) <= part { // last part
 		if vNext.pre != "" {
 			vNext.metadata = ""
 			vNext.pre = ""
@@ -318,6 +318,12 @@ func (v *Version) IncMinor() Version {
 // Same as IncPart(1)
 func (v *Version) IncMajor() Version {
 	return v.IncPart(1)
+}
+
+// IncLast produces the next version on last part
+// Same as IncPart(len(v.PartsNumber()))
+func (v *Version) IncLast() Version {
+	return v.IncPart(len(v.parts))
 }
 
 // SetPrerelease defines the prerelease value.
@@ -434,7 +440,12 @@ func (v *Version) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MarshalJSON implements JSON.Marshaler interface.
+// MarshalText implements encoding.TextMarshaler interface.
+func (v Version) MarshalText() (text []byte, err error) {
+	return []byte(v.String()), nil
+}
+
+// MarshalJSON implements json.Marshaler interface.
 func (v Version) MarshalJSON() ([]byte, error) {
 	return json.Marshal(v.String())
 }

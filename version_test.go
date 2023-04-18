@@ -202,7 +202,7 @@ func TestCompare(t *testing.T) {
 	tests := []struct {
 		v1       string
 		v2       string
-		expected int
+		expected int // -1 for <, 0 for =, 1 for >
 	}{
 		{"1.2.3", "1.5.1", -1},
 		{"2.2.3", "1.5.1", 1},
@@ -245,11 +245,18 @@ func TestCompare(t *testing.T) {
 		}
 
 		a := v1.Compare(v2)
-		e := tc.expected
-		if a != e {
+		b := v2.Compare(v1)
+
+		if a != tc.expected {
 			t.Errorf(
 				"Comparison of '%s' and '%s' failed. Expected '%d', got '%d'",
-				tc.v1, tc.v2, e, a,
+				tc.v1, tc.v2, tc.expected, a,
+			)
+		}
+		if b != -tc.expected {
+			t.Errorf(
+				"Comparison of '%s' and '%s' failed. Expected '%d', got '%d'",
+				tc.v2, tc.v1, -tc.expected, b,
 			)
 		}
 	}
@@ -257,13 +264,13 @@ func TestCompare(t *testing.T) {
 
 func TestLessThan(t *testing.T) {
 	tests := []struct {
-		v1       string
-		v2       string
-		expected bool
+		v1    string
+		v2    string
+		equal bool
 	}{
-		{"1.2.3", "1.5.1", true},
-		{"2.2.3", "1.5.1", false},
-		{"3.2-beta", "3.2-beta", false},
+		{"1.2.3", "1.5.1", false},
+		{"1.5.1", "2.2.3", false},
+		{"3.2-beta", "3.2-beta", true},
 	}
 
 	for _, tc := range tests {
@@ -278,12 +285,22 @@ func TestLessThan(t *testing.T) {
 		}
 
 		a := v1.LessThan(v2)
-		e := tc.expected
-		if a != e {
-			t.Errorf(
-				"Comparison of '%s' and '%s' failed. Expected '%t', got '%t'",
-				tc.v1, tc.v2, e, a,
-			)
+		b := v2.LessThan(v1)
+
+		if tc.equal { // a b should be false
+			if a != false {
+				t.Errorf("'%s' < '%s' should be false", tc.v1, tc.v2)
+			}
+			if b != false {
+				t.Errorf("'%s' < '%s' should be false", tc.v2, tc.v1)
+			}
+		} else { // a should be true while b should be false
+			if a != true {
+				t.Errorf("'%s' < '%s' should be true", tc.v1, tc.v2)
+			}
+			if b != false {
+				t.Errorf("'%s' < '%s' should be false", tc.v2, tc.v1)
+			}
 		}
 	}
 }
@@ -332,10 +349,15 @@ func TestEqual(t *testing.T) {
 		v2       string
 		expected bool
 	}{
+		{"1", "1.0", true},
+		{"1.0", "1.0.0", true},
+		{"1.0", "1.0.1", false},
 		{"1.2.3", "1.5.1", false},
 		{"2.2.3", "1.5.1", false},
 		{"3.2-beta", "3.2-beta", true},
 		{"3.2-beta+foo", "3.2-beta+bar", true},
+		{"1.0", "1.0.0+foo", true},
+		{"1.0+foo", "1.0.0+bar", true},
 	}
 
 	for _, tc := range tests {
@@ -360,6 +382,64 @@ func TestEqual(t *testing.T) {
 	}
 }
 
+func TestIncPart(t *testing.T) {
+	tests := []struct {
+		v1               string
+		expected         string
+		part             int
+		expectedOriginal string
+	}{
+		{"1.2.3.4", "1.2.3.5", 4, "1.2.3.5"},
+		{"1.2.3.4", "1.2.4.0", 3, "1.2.4.0"},
+		{"1.2.3", "1.2.4", 3, "1.2.4"},
+		{"v1.2.4", "1.2.5", 3, "v1.2.5"},
+		{"1.2.3", "1.3.0", 2, "1.3.0"},
+		{"1.2", "1.2.0.1", 4, "1.2.0.1"},
+		{"1.2", "1.2.1", 3, "1.2.1"},
+		{"v1.2.4", "1.3.0", 2, "v1.3.0"},
+		{"1.2.3", "2.0.0", 1, "2.0.0"},
+		{"v1.2.4", "2.0.0", 1, "v2.0.0"},
+		{"1.2.3+meta", "1.2.3.1", 4, "1.2.3.1"},
+		{"1.2.3+meta", "1.2.4", 3, "1.2.4"},
+		{"1.2.3-beta+meta", "1.2.3.0", 4, "1.2.3.0"},
+		{"1.2.3-beta+meta", "1.2.3", 3, "1.2.3"},
+		{"v1.2.4-beta+meta", "1.2.4", 3, "v1.2.4"},
+		{"1.2.3-beta+meta", "1.3.0", 2, "1.3.0"},
+		{"v1.2.4-beta+meta", "1.3.0", 2, "v1.3.0"},
+		{"1.2.3-beta+meta", "2.0.0", 1, "2.0.0"},
+		{"v1.2.4-beta+meta", "2.0.0", 1, "v2.0.0"},
+	}
+
+	for _, tc := range tests {
+		t.Run(fmt.Sprintf("%s-increase-%d", tc.v1, tc.part), func(t *testing.T) {
+			v1, err := NewVersion(tc.v1)
+			if err != nil {
+				t.Errorf("Error parsing version: %s", err)
+			}
+			v2 := v1.IncPart(tc.part)
+
+			a := v2.String()
+			e := tc.expected
+			if a != e {
+				t.Errorf(
+					"IncPart %d failed. Expected %q got %q",
+					tc.part, e, a,
+				)
+			}
+
+			a = v2.Original()
+			e = tc.expectedOriginal
+			if a != e {
+				t.Errorf(
+					"IncPart %d failed. Expected original %q got %q",
+					tc.part, e, a,
+				)
+			}
+		})
+	}
+
+}
+
 func TestInc(t *testing.T) {
 	tests := []struct {
 		v1               string
@@ -367,13 +447,18 @@ func TestInc(t *testing.T) {
 		how              string
 		expectedOriginal string
 	}{
+		{"1.2.3.4", "1.2.3.5", "last", "1.2.3.5"},
+		{"1.2.3", "1.2.4", "last", "1.2.4"},
+		{"v1.2.4", "1.2.5", "last", "v1.2.5"},
 		{"1.2.3", "1.2.4", "patch", "1.2.4"},
 		{"v1.2.4", "1.2.5", "patch", "v1.2.5"},
 		{"1.2.3", "1.3.0", "minor", "1.3.0"},
 		{"v1.2.4", "1.3.0", "minor", "v1.3.0"},
 		{"1.2.3", "2.0.0", "major", "2.0.0"},
 		{"v1.2.4", "2.0.0", "major", "v2.0.0"},
+		{"1.2.3+meta", "1.2.4", "last", "1.2.4"},
 		{"1.2.3+meta", "1.2.4", "patch", "1.2.4"},
+		{"1.2.3-beta+meta", "1.2.3", "last", "1.2.3"},
 		{"1.2.3-beta+meta", "1.2.3", "patch", "1.2.3"},
 		{"v1.2.4-beta+meta", "1.2.4", "patch", "v1.2.4"},
 		{"1.2.3-beta+meta", "1.3.0", "minor", "1.3.0"},
@@ -396,6 +481,8 @@ func TestInc(t *testing.T) {
 				v2 = v1.IncMinor()
 			case "major":
 				v2 = v1.IncMajor()
+			case "last":
+				v2 = v1.IncLast()
 			}
 
 			a := v2.String()
