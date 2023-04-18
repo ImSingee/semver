@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/ImSingee/tt"
 	"testing"
+
+	"github.com/ImSingee/tt"
 )
 
 var strictVersionPass = []string{
