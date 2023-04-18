@@ -247,6 +247,20 @@ func (v *Version) Metadata() string {
 	return v.metadata
 }
 
+func (v *Version) isZero() bool {
+	if v == nil {
+		return true
+	}
+
+	for _, p := range v.parts {
+		if p != 0 {
+			return false
+		}
+	}
+
+	return true
+}
+
 // originalVPrefix returns the original 'v' prefix if any.
 func (v *Version) originalVPrefix() string {
 	// Note, only lowercase v is supported as a prefix by the parser.
@@ -440,8 +454,20 @@ func (v *Version) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// MarshalText implements encoding.TextMarshaler interface.
-func (v Version) MarshalText() (text []byte, err error) {
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (v *Version) UnmarshalText(text []byte) error {
+	temp, err := NewVersion(string(text))
+	if err != nil {
+		return err
+	}
+
+	*v = *temp
+
+	return nil
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (v Version) MarshalText() ([]byte, error) {
 	return []byte(v.String()), nil
 }
 

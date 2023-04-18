@@ -23,6 +23,9 @@ func NewConstraint(c string) (*Constraints, error) {
 	ors := strings.Split(c, "||")
 	or := make([][]*constraint, len(ors))
 	for k, v := range ors {
+
+		// TODO: Find a way to validate and fetch all the constraints in a simpler form
+
 		// Validate the segment
 		if !validConstraintRegex.MatchString(v) {
 			return nil, fmt.Errorf("improper constraint: %s", v)
@@ -48,16 +51,11 @@ func NewConstraint(c string) (*Constraints, error) {
 	return o, nil
 }
 
-func MustConstraint(v string) *Constraints {
-	c, err := NewConstraint(v)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
 // Check tests if a version satisfies the constraints.
 func (cs Constraints) Check(v *Version) bool {
+	// TODO(mattfarina): For v4 of this library consolidate the Check and Validate
+	// functions as the underlying functions make that possible now.
+	// loop over the ORs and check the inner ANDs
 	for _, o := range cs.constraints {
 		joy := true
 		for _, c := range o {
@@ -133,33 +131,79 @@ func (cs Constraints) String() string {
 	return strings.Join(buf, " || ")
 }
 
-const ops = `=||!=|>|<|>=|=>|<=|=<|~|~>|\^`
-const cvRegex string = `v?([0-9|x|X|\*]+)(\.[0-9|x|X|\*]+)*` +
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (cs *Constraints) UnmarshalText(text []byte) error {
+	temp, err := NewConstraint(string(text))
+	if err != nil {
+		return err
+	}
+
+	*cs = *temp
+
+	return nil
+}
+
+// MarshalText implements the encoding.TextMarshaler interface.
+func (cs Constraints) MarshalText() ([]byte, error) {
+	return []byte(cs.String()), nil
+}
+
+var constraintOps map[string]cfunc
+var constraintRegex *regexp.Regexp
+var constraintRangeRegex *regexp.Regexp
+
+// Used to find individual constraints within a multi-constraint string
+var findConstraintRegex *regexp.Regexp
+
+// Used to validate an segment of ANDs is valid
+var validConstraintRegex *regexp.Regexp
+
+const cvRegex string = `v?([0-9|x|X|\*]+)((\.[0-9|x|X|\*]+)*)` +
 	`(-([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?` +
 	`(\+([0-9A-Za-z\-]+(\.[0-9A-Za-z\-]+)*))?`
 
-var constraintOps = map[string]cfunc{
-	"":   constraintTildeOrEqual,
-	"=":  constraintTildeOrEqual,
-	"!=": constraintNotEqual,
-	">":  constraintGreaterThan,
-	"<":  constraintLessThan,
-	">=": constraintGreaterThanEqual,
-	"=>": constraintGreaterThanEqual,
-	"<=": constraintLessThanEqual,
-	"=<": constraintLessThanEqual,
-	"~":  constraintTilde,
-	"~>": constraintTilde,
-	"^":  constraintCaret,
+func init() {
+	constraintOps = map[string]cfunc{
+		"":   constraintTilde,
+		"=":  constraintEqual,
+		"!=": constraintNotEqual,
+		">":  constraintGreaterThan,
+		"<":  constraintLessThan,
+		">=": constraintGreaterThanEqual,
+		"=>": constraintGreaterThanEqual,
+		"<=": constraintLessThanEqual,
+		"=<": constraintLessThanEqual,
+		"~":  constraintTilde,
+		"~>": constraintTilde,
+		"^":  constraintCaret,
+	}
+
+	ops := `=||!=|>|<|>=|=>|<=|=<|~|~>|\^`
+
+	constraintRegex = regexp.MustCompile(fmt.Sprintf(
+		`^\s*(%s)\s*(%s)\s*$`,
+		ops,
+		cvRegex))
+
+	constraintRangeRegex = regexp.MustCompile(fmt.Sprintf(
+		`\s*(%s)\s+-\s+(%s)\s*`,
+		cvRegex, cvRegex))
+
+	findConstraintRegex = regexp.MustCompile(fmt.Sprintf(
+		`(%s)\s*(%s)`,
+		ops,
+		cvRegex))
+
+	// The first time a constraint shows up will look slightly different from
+	// future times it shows up due to a leading space or comma in a given
+	// string.
+	validConstraintRegex = regexp.MustCompile(fmt.Sprintf(
+		`^(\s*(%s)\s*(%s)\s*)((?:\s+|,\s*)(%s)\s*(%s)\s*)*$`,
+		ops,
+		cvRegex,
+		ops,
+		cvRegex))
 }
-var constraintRegex = regexp.MustCompile(`^\s*(` + ops + `)\s*(` + cvRegex + `)\s*$`)
-var constraintRangeRegex = regexp.MustCompile(`\s*(` + cvRegex + `)\s+-\s+(` + cvRegex + `)\s*`)
-
-// Used to find individual constraints within a multi-constraint string
-var findConstraintRegex = regexp.MustCompile(`(` + ops + `)\s*(` + cvRegex + `)`)
-
-// Used to validate an segment of ANDs is valid
-var validConstraintRegex = regexp.MustCompile(`^(\s*(` + ops + `)\s*(` + cvRegex + `)\s*\,?)+$`)
 
 // An individual constraint
 type constraint struct {
@@ -224,13 +268,17 @@ func parseConstraint(c string) (*constraint, error) {
 
 		if dirtyPart > 0 {
 			if dirtyPart != len(verParts) { // dirty part must also be last part
-				return nil, fmt.Errorf("improper constraint: %s", c)
+				for i := dirtyPart; i < len(verParts); i++ {
+					if !isX(verParts[i]) {
+						return nil, fmt.Errorf("improper constraint: %s", c)
+					}
+				}
 			}
 
 			if dirtyPart == 1 {
 				verWithoutTrailing = "0" // remove first x
 			} else {
-				verWithoutTrailing = verWithoutTrailing[:len(verWithoutTrailing)-2] // trim .x
+				verWithoutTrailing = strings.Join(verParts[:dirtyPart-1], ".") // trim .x
 			}
 		}
 
@@ -246,6 +294,9 @@ func parseConstraint(c string) (*constraint, error) {
 
 		return cs, nil
 	}
+
+	// The rest is the special case where an empty string was passed in which
+	// is equivalent to * or >=0.0.0
 
 	cs := &constraint{
 		con: &Version{
@@ -272,8 +323,11 @@ func maxNonDirtyPartsNumberOf(v *Version, c *constraint) int {
 // Constraint functions
 func constraintNotEqual(v *Version, c *constraint) (bool, error) {
 	if c.dirtyPart > 0 {
-		if v.Prerelease() != "" || c.con.Prerelease() != "" {
-			return false, fmt.Errorf("not-euqual constraint is not applicable on pre-release generic version")
+		// If there is a pre-release on the version but the constraint isn't looking
+		// for them assume that pre-releases are not compatible. See issue 21 for
+		// more details.
+		if v.Prerelease() != "" && c.con.Prerelease() == "" {
+			return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
 		}
 
 		for i := 1; i < maxNonDirtyPartsNumberOf(v, c); i++ {
@@ -297,10 +351,13 @@ func constraintNotEqual(v *Version, c *constraint) (bool, error) {
 
 func constraintGreaterThan(v *Version, c *constraint) (bool, error) {
 	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
 	if v.Prerelease() != "" && c.con.Prerelease() == "" {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
+	}
+	if c.dirtyPart > 0 {
+		return false, fmt.Errorf("%s contains > operator which is not supported for .x", c.orig)
 	}
 
 	if v.Compare(c.con) == 1 {
@@ -311,10 +368,13 @@ func constraintGreaterThan(v *Version, c *constraint) (bool, error) {
 
 func constraintLessThan(v *Version, c *constraint) (bool, error) {
 	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
 	if v.Prerelease() != "" && c.con.Prerelease() == "" {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
+	}
+	if c.dirtyPart > 0 {
+		return false, fmt.Errorf("%s contains < operator which is not supported for .x", c.orig)
 	}
 
 	if v.Compare(c.con) == -1 {
@@ -325,10 +385,13 @@ func constraintLessThan(v *Version, c *constraint) (bool, error) {
 
 func constraintGreaterThanEqual(v *Version, c *constraint) (bool, error) {
 	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
 	if v.Prerelease() != "" && c.con.Prerelease() == "" {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
+	}
+	if c.dirtyPart > 0 {
+		return false, fmt.Errorf("%s contains >= operator which is not supported for .x", c.orig)
 	}
 
 	eq := v.Compare(c.con) >= 0
@@ -340,10 +403,13 @@ func constraintGreaterThanEqual(v *Version, c *constraint) (bool, error) {
 
 func constraintLessThanEqual(v *Version, c *constraint) (bool, error) {
 	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
 	if v.Prerelease() != "" && c.con.Prerelease() == "" {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
+	}
+	if c.dirtyPart > 0 {
+		return false, fmt.Errorf("%s contains <= operator which is not supported for .x", c.orig)
 	}
 
 	if v.Compare(c.con) <= 0 {
@@ -361,11 +427,23 @@ func (c *constraint) dirtyPartOrLen() int {
 	return c.con.PartsNumber()
 }
 
-// ~ means only the last part (may be number or x) can change, and the version should bigger or equal than the constraint
+// ~*, ~>* --> >= 0.0.0 (any)
+// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0, <3.0.0
+// ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0, <2.1.0
+// ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0, <1.3.0
+// ~1.2.3, ~>1.2.3 --> >=1.2.3, <1.3.0
+// ~1.2.0, ~>1.2.0 --> >=1.2.0, <1.3.0
 func constraintTilde(v *Version, c *constraint) (bool, error) {
+	if c.dirtyPart == 1 { // allow *
+		return true, nil
+	}
+	if c.origfunc == "~" && c.con.isZero() { // ~0.0.0 is a special case where all constraints are accepted
+		return true, nil
+	}
+
 	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
 	if v.Prerelease() != "" && c.con.Prerelease() == "" {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
 	}
@@ -374,31 +452,34 @@ func constraintTilde(v *Version, c *constraint) (bool, error) {
 		return false, fmt.Errorf("%s is less than %s", v, c.orig)
 	}
 
-	// any part before dirty part must be equal
-	dirtyPartOrLen := c.dirtyPartOrLen()
-	for i := 1; i < dirtyPartOrLen; i++ {
+	partNumber := c.con.PartsNumber()
+
+	if v.Major() != c.con.Major() {
+		return false, fmt.Errorf("%s does not have same major version as %s", v, c.orig)
+	}
+
+	if partNumber <= 1 {
+		return true, nil
+	}
+
+	if v.Minor() != c.con.Minor() {
+		return false, fmt.Errorf("%s does not have same major and minor version as %s", v, c.orig)
+	}
+
+	if partNumber <= 3 {
+		return true, nil
+	}
+
+	for i := 3; i < partNumber; i++ {
 		if v.Part(i) != c.con.Part(i) {
-			return false, fmt.Errorf("%s does not have same part %d version as %s", v, i, c.orig)
+			return false, fmt.Errorf("%s does not have same %d part version as %s", v, i, c.orig)
 		}
 	}
 
 	return true, nil
 }
 
-// When there is a .x (dirty) status it automatically opts in to ~. Otherwise
-// it's a straight =
-func constraintTildeOrEqual(v *Version, c *constraint) (bool, error) {
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-	}
-
-	if c.dirtyPart > 0 {
-		return constraintTilde(v, c)
-	}
-
+func constraintEqual(v *Version, c *constraint) (bool, error) {
 	eq := v.Equal(c.con)
 	if eq {
 		return true, nil
@@ -421,36 +502,45 @@ func (v *Version) leftZeroPartNumber() int {
 	return zeroes
 }
 
-// ~ means An update is allowed if the new version number does not modify the left-most non-zero digit in the major, minor, patch grouping.
-// ^1.2.3  :=  >=1.2.3, <2.0.0
-// ^1.2    :=  >=1.2.0, <2.0.0
-// ^1      :=  >=1.0.0, <2.0.0
-// ^0.2.3  :=  >=0.2.3, <0.3.0
-// ^0.2    :=  >=0.2.0, <0.3.0
-// ^0.0.3  :=  >=0.0.3, <0.0.4
-// not support for all zero caret constraint
+// ^*      -->  (any)
+// ^1.2.3  -->  >=1.2.3 <2.0.0
+// ^1.2    -->  >=1.2.0 <2.0.0
+// ^1      -->  >=1.0.0 <2.0.0
+// ^0.2.3  -->  >=0.2.3 <0.3.0
+// ^0.2    -->  >=0.2.0 <0.3.0
+// ^0.0.3  -->  >=0.0.3 <0.0.4
+// ^0.0    -->  >=0.0.0 <0.1.0
+// ^0      -->  >=0.0.0 <1.0.0
 func constraintCaret(v *Version, c *constraint) (bool, error) {
 	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible.
-	// See https://github.com/Masterminds/semver/issues/21 more details.
+	// for them assume that pre-releases are not compatible. See issue 21 for
+	// more details.
 	if v.Prerelease() != "" && c.con.Prerelease() == "" {
 		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
 	}
 
 	leftZeroPartNumber := c.con.leftZeroPartNumber()
-	if leftZeroPartNumber == c.con.PartsNumber() {
-		return false, fmt.Errorf("caret constraint not support for %s", c.orig)
+	shouldEqualNumber := leftZeroPartNumber + 1
+	if leftZeroPartNumber == c.con.PartsNumber() { // all zero
+		shouldEqualNumber = leftZeroPartNumber
+	}
+
+	for i := 1; i <= shouldEqualNumber; i++ {
+		if v.Part(i) != c.con.Part(i) {
+			switch i {
+			case 1:
+				return false, fmt.Errorf("%s does not have same major version as %s", v, c.orig)
+			case 2:
+				return false, fmt.Errorf("%s does not have same minor version as %s", v, c.orig)
+			default:
+				return false, fmt.Errorf("%s does not have same %d part version as %s", v, i, c.orig)
+			}
+		}
 	}
 
 	// version must be greater or equal than constraint
 	if v.LessThan(c.con) {
 		return false, fmt.Errorf("%s is less than %s", v, c.orig)
-	}
-
-	for i := 1; i <= leftZeroPartNumber; i++ {
-		if v.Part(i) != c.con.Part(i) {
-			return false, fmt.Errorf("%s version's %d part should be equal to %s's", v, i, c.con)
-		}
 	}
 
 	return true, nil
@@ -472,7 +562,7 @@ func rewriteRange(i string) string {
 	}
 	o := i
 	for _, v := range m {
-		t := fmt.Sprintf(">= %s, <= %s", v[1], v[10])
+		t := fmt.Sprintf(">= %s, <= %s ", v[1], v[11])
 		o = strings.Replace(o, v[0], t, 1)
 	}
 

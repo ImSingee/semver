@@ -647,6 +647,42 @@ func TestJsonUnmarshal(t *testing.T) {
 	}
 }
 
+func TestTextMarshal(t *testing.T) {
+	sVer := "1.1.1"
+
+	x, err := StrictNewVersion(sVer)
+	if err != nil {
+		t.Errorf("Error creating version: %s", err)
+	}
+
+	out, err2 := x.MarshalText()
+	if err2 != nil {
+		t.Errorf("Error marshaling version: %s", err2)
+	}
+
+	got := string(out)
+	want := sVer
+	if got != want {
+		t.Errorf("Error marshaling unexpected marshaled content: got=%q want=%q", got, want)
+	}
+}
+
+func TestTextUnmarshal(t *testing.T) {
+	sVer := "1.1.1"
+	ver := &Version{}
+
+	err := ver.UnmarshalText([]byte(sVer))
+	if err != nil {
+		t.Errorf("Error unmarshaling version: %s", err)
+	}
+
+	got := ver.String()
+	want := sVer
+	if got != want {
+		t.Errorf("Error unmarshaling unexpected object content: got=%q want=%q", got, want)
+	}
+}
+
 func TestSQLScanner(t *testing.T) {
 	sVer := "1.1.1"
 	x, err := StrictNewVersion(sVer)
@@ -779,4 +815,28 @@ func BenchmarkStrictNewVersionMetaDash(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	benchStrictNewVersion("1.0.0-alpha.1+meta.data", b)
+}
+
+func FuzzNewVersion(f *testing.F) {
+	testcases := []string{"v1.2.3", " ", "......", "1", "1.2.3-beta.1", "1.2.3+foo", "2.3.4-alpha.1+bar", "lorem ipsum"}
+
+	for _, tc := range testcases {
+		f.Add(tc)
+	}
+
+	f.Fuzz(func(t *testing.T, a string) {
+		_, _ = NewVersion(a)
+	})
+}
+
+func FuzzStrictNewVersion(f *testing.F) {
+	testcases := []string{"v1.2.3", " ", "......", "1", "1.2.3-beta.1", "1.2.3+foo", "2.3.4-alpha.1+bar", "lorem ipsum"}
+
+	for _, tc := range testcases {
+		f.Add(tc)
+	}
+
+	f.Fuzz(func(t *testing.T, a string) {
+		_, _ = StrictNewVersion(a)
+	})
 }
