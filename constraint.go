@@ -323,13 +323,6 @@ func maxNonDirtyPartsNumberOf(v *Version, c *constraint) int {
 // Constraint functions
 func constraintNotEqual(v *Version, c *constraint) (bool, error) {
 	if c.dirtyPart > 0 {
-		// If there is a pre-release on the version but the constraint isn't looking
-		// for them assume that pre-releases are not compatible. See issue 21 for
-		// more details.
-		if v.Prerelease() != "" && c.con.Prerelease() == "" {
-			return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-		}
-
 		for i := 1; i < maxNonDirtyPartsNumberOf(v, c); i++ {
 			if c.con.Part(i) != v.Part(i) {
 				return true, nil
@@ -350,12 +343,6 @@ func constraintNotEqual(v *Version, c *constraint) (bool, error) {
 }
 
 func constraintGreaterThan(v *Version, c *constraint) (bool, error) {
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible. See issue 21 for
-	// more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-	}
 	if c.dirtyPart > 0 {
 		return false, fmt.Errorf("%s contains > operator which is not supported for .x", c.orig)
 	}
@@ -367,12 +354,6 @@ func constraintGreaterThan(v *Version, c *constraint) (bool, error) {
 }
 
 func constraintLessThan(v *Version, c *constraint) (bool, error) {
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible. See issue 21 for
-	// more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-	}
 	if c.dirtyPart > 0 {
 		return false, fmt.Errorf("%s contains < operator which is not supported for .x", c.orig)
 	}
@@ -384,12 +365,6 @@ func constraintLessThan(v *Version, c *constraint) (bool, error) {
 }
 
 func constraintGreaterThanEqual(v *Version, c *constraint) (bool, error) {
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible. See issue 21 for
-	// more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-	}
 	if c.dirtyPart > 0 {
 		return false, fmt.Errorf("%s contains >= operator which is not supported for .x", c.orig)
 	}
@@ -402,12 +377,6 @@ func constraintGreaterThanEqual(v *Version, c *constraint) (bool, error) {
 }
 
 func constraintLessThanEqual(v *Version, c *constraint) (bool, error) {
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible. See issue 21 for
-	// more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-	}
 	if c.dirtyPart > 0 {
 		return false, fmt.Errorf("%s contains <= operator which is not supported for .x", c.orig)
 	}
@@ -439,13 +408,6 @@ func constraintTilde(v *Version, c *constraint) (bool, error) {
 	}
 	if c.origfunc == "~" && c.con.isZero() { // ~0.0.0 is a special case where all constraints are accepted
 		return true, nil
-	}
-
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible. See issue 21 for
-	// more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
 	}
 
 	if v.LessThan(c.con) {
@@ -525,13 +487,6 @@ func (v *Version) leftZeroPartNumber() int {
 // ^0.0    -->  >=0.0.0 <0.1.0
 // ^0      -->  >=0.0.0 <1.0.0
 func constraintCaret(v *Version, c *constraint) (bool, error) {
-	// If there is a pre-release on the version but the constraint isn't looking
-	// for them assume that pre-releases are not compatible. See issue 21 for
-	// more details.
-	if v.Prerelease() != "" && c.con.Prerelease() == "" {
-		return false, fmt.Errorf("%s is a prerelease version and the constraint is only looking for release versions", v)
-	}
-
 	leftZeroPartNumber := c.con.leftZeroPartNumber()
 	shouldEqualNumber := leftZeroPartNumber + 1
 	if leftZeroPartNumber == c.con.PartsNumber() { // all zero
