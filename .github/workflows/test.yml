@@ -1,7 +1,7 @@
 name: Test and Coverage
 on: [push, pull_request, workflow_dispatch]
 jobs:
-  converage:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

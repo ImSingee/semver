@@ -388,14 +388,6 @@ func constraintLessThanEqual(v *Version, c *constraint) (bool, error) {
 	return false, fmt.Errorf("%s is greater than %s", v, c.orig)
 }
 
-func (c *constraint) dirtyPartOrLen() int {
-	if c.dirtyPart > 0 {
-		return c.dirtyPart
-	}
-
-	return c.con.PartsNumber()
-}
-
 // ~*, ~>* --> >= 0.0.0 (any)
 // ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0, <3.0.0
 // ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0, <2.1.0
